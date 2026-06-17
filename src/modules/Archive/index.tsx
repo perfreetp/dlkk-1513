@@ -92,7 +92,6 @@ export default function ArchiveIndex() {
       done: isPaperReady,
       icon: FolderOpen,
       color: 'from-amber-500 to-orange-500',
-      hidden: registerType !== 'paper',
     },
     {
       key: 'electronic',
@@ -103,9 +102,8 @@ export default function ArchiveIndex() {
       done: isElectronicReady,
       icon: FolderOpen,
       color: 'from-purple-500 to-violet-500',
-      hidden: registerType !== 'electronic',
     },
-  ].filter((item) => !item.hidden);
+  ];
 
   const doneCount = archivableItems.filter((i) => i.done).length;
   const totalToDo = archivableItems.length;

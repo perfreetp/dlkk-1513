@@ -12,9 +12,13 @@ import {
   Save,
   Send,
   ChevronRight,
+  Clock,
+  RotateCcw,
+  AlertCircle,
 } from 'lucide-react';
-import { Button, Steps, Tag, Divider, message } from 'antd';
-import { useState } from 'react';
+import { Button, Steps, Tag, Divider, message, Modal, Alert } from 'antd';
+import { useState, useEffect } from 'react';
+import dayjs from 'dayjs';
 
 const stepList = [
   { title: '选择情形', icon: <Workflow className="w-5 h-5" /> },
@@ -23,9 +27,68 @@ const stepList = [
 ];
 
 export default function ComboArrangeModule() {
-  const { selectedItemIds, itemList, selectedSceneId, applicant } = useComboArrangeStore();
+  const {
+    selectedItemIds,
+    itemList,
+    selectedSceneId,
+    applicant,
+    hasDraft,
+    draftSavedAt,
+    saveDraft,
+    loadDraft,
+    clearDraft,
+  } = useComboArrangeStore();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [showDraftNotice, setShowDraftNotice] = useState(false);
+
+  useEffect(() => {
+    if (hasDraft && draftSavedAt) {
+      setShowDraftNotice(true);
+    }
+  }, [hasDraft, draftSavedAt]);
+
+  const handleSaveDraft = () => {
+    if (selectedItemIds.length === 0) {
+      message.warning('请至少选择一个联办事项');
+      return;
+    }
+    setSaving(true);
+    setTimeout(() => {
+      saveDraft();
+      setSaving(false);
+      message.success(
+        `草稿已保存！保存时间：${dayjs(draftSavedAt || new Date()).format('YYYY-MM-DD HH:mm:ss')}`,
+      );
+    }, 500);
+  };
+
+  const handleRestoreDraft = () => {
+    const success = loadDraft();
+    if (success) {
+      message.success('草稿已恢复！您可以继续编辑上次的内容');
+      setShowDraftNotice(false);
+    } else {
+      message.error('草稿恢复失败，请检查本地存储');
+    }
+  };
+
+  const handleDiscardDraft = () => {
+    Modal.confirm({
+      title: '确认放弃草稿？',
+      icon: <AlertCircle className="text-amber-500" />,
+      content: `该草稿保存于 ${dayjs(draftSavedAt).format('YYYY-MM-DD HH:mm:ss')}，放弃后将无法恢复`,
+      okText: '确认放弃',
+      okButtonProps: { danger: true },
+      cancelText: '保留草稿',
+      onOk: () => {
+        clearDraft();
+        setShowDraftNotice(false);
+        message.info('已放弃草稿');
+      },
+    });
+  };
 
   const selectedCount = selectedItemIds.length;
   const requiredCount = itemList.filter((i) => i.required).length;
@@ -75,6 +138,38 @@ export default function ComboArrangeModule() {
             </Button>
           </div>
         </div>
+
+        {showDraftNotice && (
+          <div className="px-6 pt-2">
+            <Alert
+              type="info"
+              showIcon
+              icon={<Clock className="w-4 h-4" />}
+              message={
+                <div className="flex items-center justify-between">
+                  <span>
+                    检测到草稿（保存于{' '}
+                    {dayjs(draftSavedAt).format('YYYY-MM-DD HH:mm')}
+                    ），是否继续编辑上次的内容？
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="small"
+                      icon={<RotateCcw className="w-3.5 h-3.5" />}
+                      onClick={handleRestoreDraft}
+                      type="primary"
+                    >
+                      恢复草稿
+                    </Button>
+                    <Button size="small" onClick={handleDiscardDraft} danger>
+                      放弃
+                    </Button>
+                  </div>
+                </div>
+              }
+            />
+          </div>
+        )}
 
         <div className="px-6 pt-4 pb-2">
           <Steps
@@ -158,8 +253,19 @@ export default function ComboArrangeModule() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <Button size="large" className="!rounded-lg !h-11 !px-6" icon={<Save className="w-4 h-4" />}>
+                <Button
+                  size="large"
+                  className="!rounded-lg !h-11 !px-6"
+                  icon={<Save className="w-4 h-4" />}
+                  loading={saving}
+                  onClick={handleSaveDraft}
+                >
                   保存草稿
+                  {hasDraft && (
+                    <span className="ml-1 text-xs text-emerald-600">
+                      · 已有草稿
+                    </span>
+                  )}
                 </Button>
                 <Button
                   type="primary"

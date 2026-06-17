@@ -190,30 +190,32 @@ export default function QuickCreate({ className, onSuccess }: QuickCreateProps) 
           ? `${values.fatherName}/${values.motherName}`
           : values.fatherName;
 
+      const queueItem = addToQueue({
+        serviceType: '新生儿出生一件事（全流程联办）',
+        applicantName,
+        phone: values.fatherPhone,
+        priority: false,
+      });
+
       const newCase = addCase({
         babyName: values.babyName,
         birthDate: values.babyBirthDate?.toISOString() || '',
         applicantName,
         phone: values.fatherPhone,
-        queueNumber: '',
+        queueNumber: queueItem.number,
         relation: personType,
         services: ['新生儿出生一件事'],
         materials: [],
+        windowNumber: useQueueStore.getState().currentWindow,
       });
 
-      const queueItem = addToQueue({
-        number: '',
-        serviceType: '新生儿出生一件事（全流程联办）',
-        applicantName,
-        phone: values.fatherPhone,
-        priority: false,
-        caseId: newCase.id,
-      });
+      useQueueStore.getState().updateQueueItem(queueItem.id, { caseId: newCase.id });
 
       setTimeout(() => {
         setSubmitting(false);
         message.success(
           `建单成功！办件编号：${newCase.caseNumber}，排队号码：${queueItem.number}`,
+          5,
         );
         onSuccess?.(newCase.caseNumber, queueItem.number);
         handleReset();

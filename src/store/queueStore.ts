@@ -43,6 +43,7 @@ interface QueueState {
   getWaitingCount: () => number;
   getNextWaiting: () => QueueItem | undefined;
   clearQueue: () => void;
+  updateQueueItem: (id: string, updates: Partial<QueueItem>) => void;
 }
 
 const generateQueueNumber = (): string => {
@@ -206,5 +207,21 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       currentServing: null,
       lastCalledNumber: null,
     });
+  },
+
+  updateQueueItem: (id, updates) => {
+    set((state) => ({
+      queueList: state.queueList.map((q) =>
+        q.id === id ? { ...q, ...updates } : q
+      ),
+      currentCalling:
+        state.currentCalling?.id === id
+          ? { ...state.currentCalling, ...updates }
+          : state.currentCalling,
+      currentServing:
+        state.currentServing?.id === id
+          ? { ...state.currentServing, ...updates }
+          : state.currentServing,
+    }));
   },
 }));

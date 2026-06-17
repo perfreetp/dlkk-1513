@@ -57,6 +57,15 @@ export interface NoticeData {
   contacts: DepartmentContact[];
 }
 
+export interface DraftData {
+  activeCategory: SceneCategory;
+  selectedSceneId: string | null;
+  selectedItemIds: string[];
+  applicant: ApplicantInfo;
+  noticeData: NoticeData;
+  savedAt: string;
+}
+
 interface ComboArrangeState {
   activeCategory: SceneCategory;
   selectedSceneId: string | null;
@@ -68,6 +77,8 @@ interface ComboArrangeState {
   countdownTotalSeconds: number;
   countdownRemaining: number;
   isCountdownRunning: boolean;
+  hasDraft: boolean;
+  draftSavedAt: string | null;
 
   setActiveCategory: (category: SceneCategory) => void;
   setSelectedSceneId: (id: string | null) => void;
@@ -81,6 +92,9 @@ interface ComboArrangeState {
   startCountdown: () => void;
   pauseCountdown: () => void;
   resetCountdown: () => void;
+  saveDraft: () => void;
+  loadDraft: () => boolean;
+  clearDraft: () => void;
 }
 
 const MOCK_SCENES: SceneCard[] = [
@@ -248,6 +262,24 @@ const MOCK_NOTICE_DATA: NoticeData = {
   ],
 };
 
+const DRAFT_STORAGE_KEY = 'combo_arrange_draft';
+
+const getInitialDraftState = () => {
+  try {
+    const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      return {
+        hasDraft: true,
+        draftSavedAt: data.savedAt,
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return { hasDraft: false, draftSavedAt: null };
+};
+
 export const useComboArrangeStore = create<ComboArrangeState>((set, get) => ({
   activeCategory: '热门情形',
   selectedSceneId: null,
@@ -259,6 +291,7 @@ export const useComboArrangeStore = create<ComboArrangeState>((set, get) => ({
   countdownTotalSeconds: 20 * 60,
   countdownRemaining: 20 * 60,
   isCountdownRunning: false,
+  ...getInitialDraftState(),
 
   setActiveCategory: (category) => set({ activeCategory: category }),
 
@@ -325,4 +358,51 @@ export const useComboArrangeStore = create<ComboArrangeState>((set, get) => ({
       countdownRemaining: state.countdownTotalSeconds,
       isCountdownRunning: false,
     })),
+
+  saveDraft: () => {
+    const state = get();
+    const draft: DraftData = {
+      activeCategory: state.activeCategory,
+      selectedSceneId: state.selectedSceneId,
+      selectedItemIds: state.selectedItemIds,
+      applicant: state.applicant,
+      noticeData: state.noticeData,
+      savedAt: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+      set({ hasDraft: true, draftSavedAt: draft.savedAt });
+    } catch {
+      // ignore
+    }
+  },
+
+  loadDraft: () => {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!saved) return false;
+      const draft: DraftData = JSON.parse(saved);
+      set({
+        activeCategory: draft.activeCategory,
+        selectedSceneId: draft.selectedSceneId,
+        selectedItemIds: draft.selectedItemIds,
+        applicant: draft.applicant,
+        noticeData: draft.noticeData,
+        hasDraft: true,
+        draftSavedAt: draft.savedAt,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  clearDraft: () => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      set({ hasDraft: false, draftSavedAt: null });
+    } catch {
+      // ignore
+    }
+  },
 }));
